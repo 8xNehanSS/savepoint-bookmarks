@@ -1,15 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { cleanInput, type Bookmark } from "@/lib/bookmarks";
 import { listBookmarks, saveBookmarks } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
   return NextResponse.json(await listBookmarks());
 }
 
 /** Creates a bookmark, or updates the existing one if the URL is already saved. */
 export async function POST(req: NextRequest) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
   let input;
   try {
     input = cleanInput(await req.json());

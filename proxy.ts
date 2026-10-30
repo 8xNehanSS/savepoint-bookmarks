@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE, verifySession } from "@/lib/auth";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   if (await verifySession(req.cookies.get(COOKIE)?.value)) return NextResponse.next();
 
   if (req.nextUrl.pathname.startsWith("/api/")) {

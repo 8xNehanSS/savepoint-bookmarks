@@ -1,5 +1,7 @@
-// Session tokens: "<expiry>.<HMAC(expiry)>". Uses Web Crypto so it runs in middleware too.
+// Session tokens: "<expiry>.<HMAC(expiry)>". Uses Web Crypto so it runs in the proxy too.
 // The HMAC key includes APP_PASSWORD, so changing the password signs out every session.
+
+import { NextResponse, type NextRequest } from "next/server";
 
 export const COOKIE = "pbm_session";
 export const MAX_AGE = 60 * 60 * 24 * 30; // 30 days, in seconds
@@ -42,4 +44,10 @@ export async function verifySession(token: string | undefined) {
   } catch {
     return false;
   }
+}
+
+/** For API routes: returns a 401 response if the request has no valid session. */
+export async function requireAuth(req: NextRequest) {
+  if (await verifySession(req.cookies.get(COOKIE)?.value)) return null;
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
