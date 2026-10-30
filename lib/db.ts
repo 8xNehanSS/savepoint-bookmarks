@@ -7,7 +7,8 @@ const BOOKMARKS = "pbm:bookmarks"; // hash: id -> JSON
 const FAILS = (ip: string) => `pbm:login-fail:${ip}`;
 
 type Store = {
-  hgetall(key: string): Promise<Record<string, string> | null>;
+  // With automaticDeserialization off, Upstash returns the raw flat [field, value, ...] array.
+  hgetall(key: string): Promise<Record<string, string> | string[] | null>;
   hget(key: string, field: string): Promise<string | null>;
   hset(key: string, values: Record<string, string>): Promise<unknown>;
   hdel(key: string, field: string): Promise<unknown>;
@@ -71,7 +72,8 @@ function db(): Store {
 
 export async function listBookmarks(): Promise<Bookmark[]> {
   const all = (await db().hgetall(BOOKMARKS)) ?? {};
-  return Object.values(all)
+  const values = Array.isArray(all) ? all.filter((_, i) => i % 2 === 1) : Object.values(all);
+  return values
     .map((v) => JSON.parse(v) as Bookmark)
     .sort((a, b) => b.createdAt - a.createdAt);
 }
