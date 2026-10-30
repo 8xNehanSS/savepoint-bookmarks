@@ -4,11 +4,16 @@ A personal bookmark manager built with Next.js, hosted on Vercel, with your book
 
 ## Features
 - Sign in with a single username and password (set as environment variables)
-- Save links with a title, category and notes
-- Full-text search across titles, URLs, notes and categories, with highlighted matches (press `/` to focus, `Esc` to clear)
-- Category sidebar with counts; rename a category by hovering it and clicking ✎
+- Save links with a title, category, notes and an optional pin. The title fills in automatically from the page.
+- Paste a link anywhere on the page (outside a text field) to start saving it
+- Full-text search across titles, sites, notes and categories, with matches highlighted
+- Browse by category or Pinned; sort by newest, oldest, recently edited or title. Lists are grouped by week and month.
+- Each category gets its own colour, shown as a ribbon down the edge of its links
+- Site icons are fetched by your own server, so no third-party icon service sees which sites you save
+- Deletes can be undone for 5 seconds
+- Keyboard: `/` search, `n` new, `j`/`k` move, `Enter` open, `e` edit, `p` pin, `c` copy, `Del` delete, `?` all shortcuts
 - Bookmarklet: one click saves the current page, and any text you've selected becomes the note
-- Works across devices: everything is stored server-side
+- Works on phones: the sidebar becomes a slide-out menu and a floating button saves links
 
 ## Deploy to Vercel
 1. Push this folder to a Git repo and import it in Vercel.

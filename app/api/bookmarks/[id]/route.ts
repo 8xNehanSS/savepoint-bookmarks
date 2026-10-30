@@ -13,7 +13,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
   let input;
   try {
-    input = cleanInput(await req.json());
+    // Partial updates (e.g. just { pinned }) merge onto the stored bookmark.
+    input = cleanInput({ ...current, ...(await req.json()) });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }

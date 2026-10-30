@@ -15,16 +15,17 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const denied = await requireAuth(req);
   if (denied) return denied;
-  let input;
+  let body, input;
   try {
-    input = cleanInput(await req.json());
+    body = await req.json();
+    input = cleanInput(body);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
   const now = Date.now();
   const existing = (await listBookmarks()).find((b) => b.url === input.url);
   const bm: Bookmark = existing
-    ? { ...existing, ...input, updatedAt: now }
+    ? { ...existing, ...input, pinned: typeof body.pinned === "boolean" ? body.pinned : existing.pinned, updatedAt: now }
     : { id: crypto.randomUUID(), ...input, createdAt: now, updatedAt: now };
   await saveBookmarks([bm]);
   return NextResponse.json(bm, { status: existing ? 200 : 201 });

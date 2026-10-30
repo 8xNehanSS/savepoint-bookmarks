@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import BookmarkForm from "@/components/BookmarkForm";
+import Icon, { Ribbon } from "@/components/Icon";
 import { addBookmark, normalizeUrl, useBookmarks, type Bookmark, type BookmarkInput } from "@/lib/store";
 
 // Target of the bookmarklet: /add?url=…&title=…&notes=…
@@ -10,11 +11,12 @@ export default function AddPage() {
   const [initial, setInitial] = useState<BookmarkInput | null>(null);
   const [existing, setExisting] = useState<Bookmark | undefined>();
   const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [isPopup, setIsPopup] = useState(false);
 
   // Prefill once the list has loaded, so an already-saved URL opens in update mode.
   useEffect(() => {
     if (!ready || initial) return;
+    setIsPopup(Boolean(window.opener));
     const p = new URLSearchParams(location.search);
     const url = p.get("url") ?? "";
     const found = url ? bookmarks.find((b) => b.url === normalizeUrl(url)) : undefined;
@@ -25,44 +27,48 @@ export default function AddPage() {
   const categories = useMemo(() => [...new Set(bookmarks.map((b) => b.category))].sort(), [bookmarks]);
 
   async function save(input: BookmarkInput) {
-    setSaveError("");
-    try {
-      await addBookmark(input); // the server updates instead if the URL already exists
-      setSaved(true);
-      if (window.opener) setTimeout(() => window.close(), 700);
-    } catch (e) {
-      setSaveError((e as Error).message);
-    }
+    await addBookmark(input); // the server updates instead if the URL already exists
+    setSaved(true);
+    if (isPopup) setTimeout(() => window.close(), 900);
   }
 
   return (
     <div className="popup">
-      <div className="brand">
-        <span className="logo" aria-hidden>
-          ◆
-        </span>
-        {existing ? "Update bookmark" : "Save bookmark"}
-      </div>
-      {error && <p className="notice error">{error}</p>}
+      <header className="popup-head">
+        <Ribbon />
+        <h1>{existing ? "Update bookmark" : "Save to Bookmarks"}</h1>
+      </header>
+
+      {error && <p className="notice notice-error">{error}</p>}
+
       {saved ? (
         <div className="saved">
-          <p>✓ Saved</p>
-          <a href="/" className="btn">
-            Open bookmarks
-          </a>
+          <span className="saved-check">
+            <Icon name="check" size={28} />
+          </span>
+          <p>{existing ? "Bookmark updated" : "Saved to your shelf"}</p>
+          {!isPopup && (
+            <a href="/" className="btn">
+              Open bookmarks
+            </a>
+          )}
         </div>
       ) : !initial ? (
-        <p className="muted">Loading…</p>
+        <div className="skeleton skeleton-form" aria-label="Loading" />
       ) : (
         <>
-          {existing && <p className="notice">You saved this page on {new Date(existing.createdAt).toLocaleDateString()}. Saving updates it.</p>}
-          {saveError && <p className="notice error">{saveError}</p>}
+          {existing && (
+            <p className="notice">
+              You saved this page on {new Date(existing.createdAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}.
+              Saving will update it.
+            </p>
+          )}
           <BookmarkForm
             categories={categories}
             initial={initial}
-            submitLabel={existing ? "Update" : "Save"}
+            submitLabel={existing ? "Update bookmark" : "Save link"}
             onSubmit={save}
-            onCancel={window.opener ? () => window.close() : undefined}
+            onCancel={isPopup ? () => window.close() : undefined}
             autoFocus={initial.url ? "notes" : "url"}
           />
         </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { Ribbon } from "@/components/Icon";
 
 // Only allow same-site relative paths, to avoid an open redirect.
 function nextPath() {
@@ -29,9 +30,9 @@ export default function LoginPage() {
         return;
       }
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Sign-in failed.");
+      setError(data.error ?? "Sign-in failed. Try again.");
     } catch {
-      setError("Network error. Try again.");
+      setError("Couldn't reach the server. Check your connection and try again.");
     }
     setBusy(false);
   }
@@ -39,26 +40,25 @@ export default function LoginPage() {
   return (
     <div className="login">
       <form className="login-card" onSubmit={submit}>
-        <div className="brand">
-          <span className="logo" aria-hidden>
-            ◆
-          </span>
-          Bookmarks
+        <div className="login-mark">
+          <Ribbon size={34} />
         </div>
+        <h1>Your bookmarks</h1>
+        <p className="login-sub">Sign in to open your shelf.</p>
         <div className="form">
-          <label>
-            <span>Username</span>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoFocus required />
+          <label className="field">
+            <span className="field-label">Username</span>
+            <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} autoFocus required />
           </label>
-          <label>
-            <span>Password</span>
+          <label className="field">
+            <span className="field-label">Password</span>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
           </label>
+          {error && <p className="notice notice-error">{error}</p>}
+          <button className="btn btn-primary btn-block" disabled={busy}>
+            {busy ? "Signing in…" : "Sign in"}
+          </button>
         </div>
-        {error && <p className="notice error">{error}</p>}
-        <button className="btn primary" disabled={busy}>
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
       </form>
     </div>
   );

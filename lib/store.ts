@@ -54,8 +54,22 @@ export function addBookmark(input: BookmarkInput) {
   return mutate(api<Bookmark>("/api/bookmarks", { method: "POST", body: JSON.stringify(input) }));
 }
 
-export function updateBookmark(id: string, input: BookmarkInput) {
+export function updateBookmark(id: string, input: Partial<BookmarkInput>) {
   return mutate(api<Bookmark>(`/api/bookmarks/${id}`, { method: "PATCH", body: JSON.stringify(input) }));
+}
+
+export function togglePin(b: Bookmark) {
+  return updateBookmark(b.id, { pinned: !b.pinned });
+}
+
+/** Best-effort page title lookup; resolves to "" when the page can't be read. */
+export async function fetchTitle(url: string): Promise<string> {
+  try {
+    const { title } = await api<{ title: string }>(`/api/meta?url=${encodeURIComponent(url)}`);
+    return title;
+  } catch {
+    return "";
+  }
 }
 
 export function deleteBookmark(id: string) {
