@@ -272,10 +272,19 @@ textarea {
   background: var(--bg);
 }
 
-.tools {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+.sidebar-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar-foot .btn {
+  justify-content: flex-start;
+  color: var(--muted);
+  border-color: transparent;
+}
+.sidebar-foot .btn:hover {
+  color: var(--text);
+  border-color: var(--border);
 }
 .tools h3 {
   margin: 0 0 4px;
@@ -426,6 +435,45 @@ textarea {
   color: var(--muted);
   font-size: 13px;
 }
+.notice.error {
+  color: var(--danger);
+  margin-bottom: 8px;
+}
+
+/* ---------- login ---------- */
+
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.login-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.login-card .brand {
+  padding: 0;
+  justify-content: center;
+  font-size: 17px;
+}
+.login-card .form input {
+  background: var(--bg);
+}
+.login-card .btn {
+  width: 100%;
+}
+.login-card .notice.error {
+  margin: 0;
+}
+
 .saved {
   text-align: center;
   padding: 40px 0;
@@ -461,14 +509,11 @@ textarea {
   .cat-row .rename {
     display: none;
   }
-  .tools-toggle {
-    align-self: flex-start;
+  .sidebar-foot {
+    flex-direction: row;
   }
   .main {
     padding: 12px 16px 40px;
-  }
-  .tools {
-    grid-template-columns: 1fr;
   }
   .actions {
     opacity: 1;

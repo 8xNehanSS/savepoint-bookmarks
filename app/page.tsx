@@ -6,8 +6,7 @@ import Highlight from "@/components/Highlight";
 import {
   addBookmark,
   deleteBookmark,
-  exportJson,
-  importJson,
+  logout,
   renameCategory,
   search,
   tokenize,
@@ -29,7 +28,7 @@ function fmtDate(ts: number) {
 }
 
 export default function Home() {
-  const { bookmarks, ready } = useBookmarks();
+  const { bookmarks, ready, error } = useBookmarks();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -71,15 +70,24 @@ export default function Home() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Runs a server mutation, calling onOk only if it succeeded.
+  async function run(p: Promise<unknown>, onOk?: () => void) {
+    try {
+      await p;
+      onOk?.();
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  }
+
   function onRename(from: string) {
     const to = prompt(`Rename category "${from}" to:`, from);
     if (to == null || to.trim() === from) return;
-    renameCategory(from, to);
-    if (category === from) setCategory(to.trim());
+    run(renameCategory(from, to), () => category === from && setCategory(to.trim()));
   }
 
   function onDelete(b: Bookmark) {
-    if (confirm(`Delete "${b.title}"?`)) deleteBookmark(b.id);
+    if (confirm(`Delete "${b.title}"?`)) run(deleteBookmark(b.id));
   }
 
   return (
@@ -108,9 +116,14 @@ export default function Home() {
             </div>
           ))}
         </nav>
-        <button className="btn ghost tools-toggle" onClick={() => setShowTools((s) => !s)}>
-          {showTools ? "Hide tools" : "Bookmarklet & backup"}
-        </button>
+        <div className="sidebar-foot">
+          <button className="btn ghost" onClick={() => setShowTools((s) => !s)}>
+            {showTools ? "Hide bookmarklet" : "Bookmarklet"}
+          </button>
+          <button className="btn ghost" onClick={logout}>
+            Sign out
+          </button>
+        </div>
       </aside>
 
       <main className="main">
@@ -138,16 +151,16 @@ export default function Home() {
               categories={categoryNames}
               initial={{ category: category ?? "" }}
               submitLabel="Add bookmark"
-              onSubmit={(input) => {
-                addBookmark(input);
-                setAdding(false);
-              }}
+              onSubmit={(input) => run(addBookmark(input), () => setAdding(false))}
               onCancel={() => setAdding(false)}
             />
           </section>
         )}
 
+        {error && <p className="notice error">Couldn&apos;t load bookmarks: {error}</p>}
+
         <div className="meta">
+          {!ready && "Loading…"}
           {ready && (
             <>
               {results.length} {results.length === 1 ? "bookmark" : "bookmarks"}
@@ -157,11 +170,11 @@ export default function Home() {
           )}
         </div>
 
-        {ready && bookmarks.length === 0 && !adding && (
+        {ready && !error && bookmarks.length === 0 && !adding && (
           <div className="empty">
             <p>No bookmarks yet.</p>
             <p className="muted">
-              Click <strong>+ Add</strong>, or set up the bookmarklet under <em>Bookmarklet &amp; backup</em> to save pages with one click.
+              Click <strong>+ Add</strong>, or set up the <em>Bookmarklet</em> to save pages with one click.
             </p>
           </div>
         )}
@@ -173,10 +186,7 @@ export default function Home() {
                 <BookmarkForm
                   categories={categoryNames}
                   initial={b}
-                  onSubmit={(input) => {
-                    updateBookmark(b.id, input);
-                    setEditing(null);
-                  }}
+                  onSubmit={(input) => run(updateBookmark(b.id, input), () => setEditing(null))}
                   onCancel={() => setEditing(null)}
                 />
               </li>
@@ -226,8 +236,6 @@ export default function Home() {
 
 function Tools() {
   const linkRef = useRef<HTMLAnchorElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [msg, setMsg] = useState("");
 
   // React refuses javascript: hrefs, so set it on the DOM node directly.
   useEffect(() => {
@@ -237,25 +245,6 @@ function Tools() {
       `const w=window.open(u,'pbm','width=520,height=620');if(!w)location.href=u;})()`;
     linkRef.current?.setAttribute("href", code);
   }, []);
-
-  function download() {
-    const blob = new Blob([exportJson()], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `bookmarks-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  async function onImport(file: File) {
-    try {
-      const n = importJson(await file.text());
-      setMsg(`Imported ${n} new bookmark${n === 1 ? "" : "s"}.`);
-    } catch (e) {
-      setMsg(`Import failed: ${(e as Error).message}`);
-    }
-    if (fileRef.current) fileRef.current.value = "";
-  }
 
   return (
     <section className="panel tools">
@@ -267,22 +256,6 @@ function Tools() {
         <a ref={linkRef} className="bookmarklet" onClick={(e) => e.preventDefault()} draggable>
           ◆ Save bookmark
         </a>
-      </div>
-      <div>
-        <h3>Backup</h3>
-        <p className="muted">
-          Bookmarks are stored only in this browser&apos;s local storage. Export them regularly, and import the file to move them to another browser.
-        </p>
-        <div className="row">
-          <button className="btn" onClick={download}>
-            Export JSON
-          </button>
-          <button className="btn" onClick={() => fileRef.current?.click()}>
-            Import JSON
-          </button>
-          <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && onImport(e.target.files[0])} />
-        </div>
-        {msg && <p className="muted small">{msg}</p>}
       </div>
     </section>
   );
