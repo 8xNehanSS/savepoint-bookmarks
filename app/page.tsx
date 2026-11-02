@@ -39,6 +39,13 @@ type Dialog =
 const SORT_KEY = "pbm:sort";
 const UNDO_MS = 5000;
 
+/** How many cards sit in one row of the grid holding `id` (or the first grid). */
+function gridColumns(id: string | null) {
+  const list = (id && document.querySelector(`[data-id="${id}"]`)?.parentElement) || document.querySelector(".list");
+  if (!list) return 1;
+  return getComputedStyle(list).gridTemplateColumns.split(" ").filter(Boolean).length || 1;
+}
+
 function isTyping(t: EventTarget | null) {
   const el = t as HTMLElement | null;
   return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
@@ -227,14 +234,22 @@ export default function Home() {
           setDialog({ kind: "shortcuts" });
           break;
         case "j":
-        case "ArrowDown":
+        case "ArrowRight":
           e.preventDefault();
           move(1);
           break;
         case "k":
-        case "ArrowUp":
+        case "ArrowLeft":
           e.preventDefault();
           move(-1);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          move(gridColumns(selected));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          move(-gridColumns(selected));
           break;
         case "Escape":
           setSelected(null);
@@ -627,8 +642,9 @@ function BookmarkletDialog({ onClose }: { onClose: () => void }) {
 const SHORTCUTS: [string[], string][] = [
   [["/"], "Search"],
   [["n"], "Save a link"],
-  [["j"], "Next link"],
-  [["k"], "Previous link"],
+  [["j", "→"], "Next link"],
+  [["k", "←"], "Previous link"],
+  [["↑", "↓"], "Row above or below"],
   [["Enter"], "Open the selected link"],
   [["e"], "Edit"],
   [["p"], "Pin or unpin"],

@@ -325,7 +325,7 @@ kbd {
 
 .main {
   width: 100%;
-  max-width: 940px;
+  max-width: 1280px;
   padding: 0 44px 120px;
 }
 
@@ -418,14 +418,14 @@ kbd {
   border-color: var(--line-strong);
 }
 
-/* ---------- list ---------- */
+/* ---------- grid ---------- */
 
 .group {
-  margin-top: 22px;
+  margin-top: 26px;
 }
 
 .group-label {
-  margin: 0 0 4px 22px;
+  margin: 0 0 10px 2px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-2);
@@ -435,47 +435,55 @@ kbd {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 14px;
 }
 
 .bm {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 20px;
-  padding: 14px 16px 14px 22px;
-  border-radius: 12px;
-  transition: background 0.12s;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px 16px 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
-/* The ribbon: each link's category colour down its edge. */
+/* The ribbon: each link's category colour along its top edge. */
 .bm::before {
   content: "";
   position: absolute;
-  left: 7px;
-  top: 16px;
-  bottom: 16px;
-  width: 3px;
-  border-radius: 2px;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
   background: var(--cat);
-  opacity: 0.75;
-  transition: width 0.15s, opacity 0.15s;
+  opacity: 0.7;
+  transition: height 0.15s, opacity 0.15s;
 }
 .bm:hover {
-  background: var(--hover);
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(4, 6, 14, 0.35);
 }
 .bm:hover::before,
 .bm.is-selected::before {
   opacity: 1;
-  width: 4px;
+  height: 4px;
 }
 .bm.is-selected {
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  border-color: rgba(226, 182, 95, 0.6);
+  box-shadow: 0 0 0 3px var(--brass-soft);
 }
 
 .bm-link {
+  flex: 1;
   display: flex;
-  gap: 14px;
+  flex-direction: column;
+  gap: 12px;
   min-width: 0;
   text-decoration: none;
   outline-offset: 4px;
@@ -485,12 +493,11 @@ kbd {
 .site-icon {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  margin-top: 1px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
-  border-radius: 9px;
-  background: var(--surface);
+  border-radius: 12px;
+  background: var(--raised);
   border: 1px solid var(--line);
   overflow: hidden;
 }
@@ -500,12 +507,12 @@ kbd {
   border-color: transparent;
 }
 .site-icon img {
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
 }
 .site-letter {
-  font: 600 16px/1 var(--font-read);
+  font: 600 22px/1 var(--font-read);
   color: var(--cat);
 }
 
@@ -516,7 +523,7 @@ kbd {
 }
 
 .bm-title {
-  font: 500 17.5px/1.35 var(--font-read);
+  font: 500 17px/1.35 var(--font-read);
   color: var(--text);
   overflow-wrap: anywhere;
   display: -webkit-box;
@@ -535,7 +542,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 13px;
   color: var(--muted);
   overflow: hidden;
@@ -548,28 +555,30 @@ kbd {
 }
 
 .bm-notes {
-  margin-top: 7px;
-  max-width: 68ch;
-  font-size: 14px;
-  line-height: 1.55;
+  margin-top: 8px;
+  font-size: 13.5px;
+  line-height: 1.5;
   color: var(--text-2);
   white-space: pre-line;
   overflow-wrap: anywhere;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .bm-meta {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  padding-top: 3px;
-  transition: opacity 0.12s;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
 }
 .bm-meta time {
+  margin-left: auto;
   font-size: 12.5px;
   color: var(--muted);
   white-space: nowrap;
@@ -577,8 +586,8 @@ kbd {
 
 .bm-actions {
   position: absolute;
-  right: 12px;
-  top: 12px;
+  right: 10px;
+  top: 14px;
   display: flex;
   gap: 2px;
   padding: 3px;
@@ -595,17 +604,13 @@ kbd {
   opacity: 1;
   pointer-events: auto;
 }
-.bm:hover .bm-meta,
-.bm.is-selected .bm-meta,
-.bm:focus-within .bm-meta {
-  opacity: 0;
-}
 
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  max-width: 180px;
+  min-width: 0;
+  max-width: 100%;
   padding: 3px 10px 3px 9px;
   border-radius: 999px;
   border: 1px solid var(--line);
@@ -627,20 +632,20 @@ kbd {
   list-style: none;
   margin: 24px 0 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 14px;
 }
 .skeleton li,
 .skeleton-form {
-  height: 70px;
+  height: 196px;
   border-radius: 12px;
   background: linear-gradient(90deg, var(--surface) 0%, var(--raised) 50%, var(--surface) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
 .skeleton li:nth-child(even) {
-  height: 92px;
+  height: 168px;
 }
 .skeleton-form {
   height: 360px;
@@ -1134,21 +1139,17 @@ kbd {
 
 /* Touch screens have no hover: keep the row actions visible instead. */
 @media (hover: none) {
-  .bm {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
-    padding-right: 12px;
-    padding-bottom: 8px;
-  }
-  .bm-meta {
-    display: none;
+  .bm:hover {
+    transform: none;
+    box-shadow: none;
   }
   .bm-actions,
   .bm:hover .bm-actions {
     position: static;
     opacity: 1;
     pointer-events: auto;
-    margin-left: 40px;
+    justify-content: flex-end;
+    margin: 6px -6px -6px 0;
     padding: 0;
     background: none;
     border: 0;

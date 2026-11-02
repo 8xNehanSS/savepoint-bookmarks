@@ -39,7 +39,7 @@ function BookmarkRow({ b, terms, selected, showCategory, onSelect, onCategory, o
       onMouseDown={onSelect}
     >
       <a className="bm-link" href={b.url} target="_blank" rel="noopener noreferrer" tabIndex={selected ? 0 : -1}>
-        <SiteIcon host={host} color={color} />
+        <SiteIcon url={b.url} host={host} color={color} />
         <span className="bm-main">
           <span className="bm-title">
             <Highlight text={b.title} terms={terms} />
