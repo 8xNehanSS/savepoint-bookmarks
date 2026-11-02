@@ -62,7 +62,12 @@ export async function safeFetch(raw: string, opts: { maxBytes: number; accept: s
       const res = await fetch(url, {
         redirect: "manual",
         signal: ctrl.signal,
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; PrivateBookmarks/1.0)", Accept: opts.accept },
+        // Browser-like headers: bot shields often refuse anything that doesn't look like a browser.
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+          Accept: opts.accept,
+          "Accept-Language": "en-US,en;q=0.9",
+        },
       });
       const location = res.headers.get("location");
       if (res.status >= 300 && res.status < 400 && location) {

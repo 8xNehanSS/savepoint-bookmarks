@@ -3,8 +3,10 @@ import { requireAuth } from "@/lib/auth";
 import { normalizeUrl } from "@/lib/bookmarks";
 import { safeFetch } from "@/lib/safeFetch";
 
-// Fetched server-side so the browser never tells a third-party icon service which sites you save.
+// Fetched server-side so your browser never contacts an icon service. The site itself is tried first;
+// public icon services are only asked (for the domain, never the full link) when the site gives nothing.
 const MAX = 300_000;
+const OWN_BUDGET_MS = 8000;
 const HEADERS = {
   "Cache-Control": "private, max-age=604800",
   "X-Content-Type-Options": "nosniff",
@@ -14,15 +16,26 @@ const HEADERS = {
 
 type Found = { body: Uint8Array; type: string };
 
+/** Tells the image type from its bytes, since servers often label icons wrongly (or send an HTML block page). */
+function sniff(b: Uint8Array): string | null {
+  const ascii = (from: number, len: number) => String.fromCharCode(...b.subarray(from, from + len));
+  if (b[0] === 0x89 && ascii(1, 3) === "PNG") return "image/png";
+  if (b[0] === 0 && b[1] === 0 && (b[2] === 1 || b[2] === 2) && b[3] === 0) return "image/x-icon";
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (ascii(0, 4) === "GIF8") return "image/gif";
+  if (ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return "image/webp";
+  if (ascii(4, 4) === "ftyp" && /avif|avis/.test(ascii(8, 4))) return "image/avif";
+  if (b[0] === 0x42 && b[1] === 0x4d) return "image/bmp";
+  const head = new TextDecoder().decode(b.subarray(0, 1000)).trimStart().toLowerCase();
+  if (head.startsWith("<svg") || ((head.startsWith("<?xml") || head.startsWith("<!--")) && head.includes("<svg"))) return "image/svg+xml";
+  return null;
+}
+
 async function tryIcon(url: string): Promise<Found | null> {
   try {
-    const { res, body } = await safeFetch(url, { maxBytes: MAX, accept: "image/*", timeoutMs: 4000 });
-    let type = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
-    if (!type.startsWith("image/")) {
-      if ((type === "application/octet-stream" || type === "text/plain" || !type) && /\.ico(\?|$)/i.test(url)) type = "image/x-icon";
-      else return null;
-    }
-    return body.length ? { body, type } : null;
+    const { body } = await safeFetch(url, { maxBytes: MAX, accept: "image/*", timeoutMs: 4000 });
+    const type = body.length ? sniff(body) : null;
+    return type ? { body, type } : null;
   } catch {
     return null;
   }
@@ -39,7 +52,20 @@ function score(tag: string) {
   return s;
 }
 
-/** Icons a page declares in its <head>, best first. */
+/** Icons listed in a web app manifest, biggest (up to 256px) first. */
+async function iconsFromManifest(url: string) {
+  try {
+    const { body } = await safeFetch(url, { maxBytes: 100_000, accept: "application/manifest+json,application/json" });
+    const icons = (JSON.parse(new TextDecoder().decode(body)).icons ?? []) as { src?: string; sizes?: string }[];
+    return icons
+      .filter((i) => typeof i.src === "string")
+      .map((i) => ({ href: new URL(i.src!, url).toString(), score: Math.min(Number(i.sizes?.match(/(\d+)x/)?.[1] ?? 64), 256) }));
+  } catch {
+    return [];
+  }
+}
+
+/** Icons a page declares in its <head> or manifest, best first. */
 async function iconsFromHtml(pageUrl: string) {
   try {
     const { body, url } = await safeFetch(pageUrl, { maxBytes: 300_000, accept: "text/html" });
@@ -47,15 +73,16 @@ async function iconsFromHtml(pageUrl: string) {
     const base = html.match(/<base[^>]+href=["']([^"']+)["']/i)?.[1];
     const root = base ? new URL(base, url) : url;
     const icons: { href: string; score: number }[] = [];
+    let manifest: string | null = null;
     for (const tag of html.match(/<link[^>]+>/gi) ?? []) {
-      if (!/rel=["'][^"']*icon[^"']*["']/i.test(tag)) continue;
-      const href = tag.match(/href=["']([^"']+)["']/i)?.[1];
-      const s = score(tag);
-      if (!href || s < 0) continue;
+      const href = tag.match(/href=["']([^"']+)["']/i)?.[1]?.replace(/&amp;/g, "&");
+      if (!href) continue;
       try {
-        icons.push({ href: new URL(href.replace(/&amp;/g, "&"), root).toString(), score: s });
+        if (/rel=["']manifest["']/i.test(tag)) manifest = new URL(href, root).toString();
+        else if (/rel=["'][^"']*icon[^"']*["']/i.test(tag) && score(tag) >= 0) icons.push({ href: new URL(href, root).toString(), score: score(tag) });
       } catch {}
     }
+    if (manifest) icons.push(...(await iconsFromManifest(manifest)));
     return { finalUrl: url, icons: icons.sort((a, b) => b.score - a.score).map((i) => i.href) };
   } catch {
     return { finalUrl: null, icons: [] };
@@ -63,7 +90,7 @@ async function iconsFromHtml(pageUrl: string) {
 }
 
 /** Walks every place a site might keep its icon, from the saved page itself up to the parent domain. */
-async function findIcon(pageUrl: URL): Promise<Found | null> {
+async function ownIcon(pageUrl: URL): Promise<Found | null> {
   const tried = new Set<string>();
   const attempt = async (u: string) => {
     if (tried.has(u)) return null;
@@ -99,6 +126,15 @@ async function findIcon(pageUrl: URL): Promise<Found | null> {
   return null;
 }
 
+/** Last resort: public icon caches, which crawl sites we can't reach (bot walls, logins, slow servers). */
+async function serviceIcon(host: string): Promise<Found | null> {
+  const h = encodeURIComponent(host);
+  return (
+    (await tryIcon(`https://icons.duckduckgo.com/ip3/${h}.ico`)) ??
+    (await tryIcon(`https://www.google.com/s2/favicons?domain=${h}&sz=64`))
+  );
+}
+
 export async function GET(req: NextRequest) {
   const denied = await requireAuth(req);
   if (denied) return denied;
@@ -112,7 +148,9 @@ export async function GET(req: NextRequest) {
   }
   if (pageUrl.protocol !== "http:" && pageUrl.protocol !== "https:") return new NextResponse(null, { status: 400 });
 
-  const icon = await findIcon(pageUrl);
-  if (!icon) return new NextResponse(null, { status: 404, headers: { "Cache-Control": "private, max-age=86400" } });
+  const budget = new Promise<null>((r) => setTimeout(() => r(null), OWN_BUDGET_MS));
+  const icon = (await Promise.race([ownIcon(pageUrl), budget])) ?? (await serviceIcon(pageUrl.hostname));
+  // Short negative cache, so a site that was down gets another chance soon.
+  if (!icon) return new NextResponse(null, { status: 404, headers: { "Cache-Control": "private, max-age=3600" } });
   return new NextResponse(Buffer.from(icon.body), { headers: { ...HEADERS, "Content-Type": icon.type } });
 }
